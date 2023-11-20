@@ -1,16 +1,59 @@
 <?php
 
-namespace Tests\Feature;
+namespace App\Http\Controllers;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use Tests\TestCase;
+use App\Services\UserService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
-class UserControllerTest extends TestCase
+class UserController extends Controller
 {
-    public function testLoginPage()
+    private UserService $userService;
+
+    /**
+     * @param UserService $userService
+     */
+    public function __construct(UserService $userService)
     {
-        $this->get('/login')
-            ->assertSeeText("Login");
+        $this->userService = $userService;
+    }
+
+    public function login(): Response
+    {
+        return response()
+            ->view("user.login", [
+                "title" => "Login"
+            ]);
+    }
+
+    public function doLogin(Request $request): Response|RedirectResponse
+    {
+        $user = $request->input('user');
+        $password = $request->input('password');
+
+        // validate input
+        if (empty($user) || empty($password)) {
+            return response()->view("user.login", [
+                "title" => "Login",
+                "error" => "User or password is required"
+            ]);
+        }
+
+        if ($this->userService->login($user, $password)) {
+            $request->session()->put("user", $user);
+            return redirect("/");
+        }
+
+        return response()->view("user.login", [
+            "title" => "Login",
+            "error" => "User or password is wrong"
+        ]);
+    }
+
+    public function doLogout(Request $request): RedirectResponse
+    {
+        $request->session()->forget("user");
+        return redirect("/");
     }
 }
